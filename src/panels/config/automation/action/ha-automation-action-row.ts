@@ -113,12 +113,20 @@ export default class HaAutomationActionRow extends LitElement {
     }
   }
 
+  protected renderWithExpansionPanel(content, title) {
+    return html`
+      <ha-expansion-panel expanded outlined>
+        ${title ? html`<span slot="title">${title}</span>` : null} ${content}
+      </ha-expansion-panel>
+    `;
+  }
+
   protected render() {
     const type = getType(this.action);
     const selected = type ? OPTIONS.indexOf(type) : -1;
     const yamlMode = this._yamlMode;
 
-    return html`
+    const content = html`
       <ha-card>
         <div class="card-content">
           <div class="card-menu">
@@ -240,6 +248,12 @@ export default class HaAutomationActionRow extends LitElement {
         </div>
       </ha-card>
     `;
+
+    if (this.action.alias) {
+      return this.renderWithExpansionPanel(content, this.action.alias);
+    }
+
+    return content;
   }
 
   private _handleUiModeNotAvailable(ev: CustomEvent) {

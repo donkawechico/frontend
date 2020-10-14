@@ -1,3 +1,4 @@
+import "../../../../components/ha-expansion-panel";
 import "@material/mwc-button";
 import {
   css,
@@ -44,6 +45,7 @@ export default class HaAutomationAction extends LitElement {
           </mwc-button>
         </div>
       </ha-card>
+      </ha-expansion-panel>
     `;
   }
 

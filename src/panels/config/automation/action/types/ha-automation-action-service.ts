@@ -26,6 +26,7 @@ const actionStruct = object({
   service: optional(string()),
   entity_id: optional(EntityId),
   data: optional(any()),
+  alias: optional(string()),
 });
 
 @customElement("ha-automation-action-service")
