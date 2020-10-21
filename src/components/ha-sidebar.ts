@@ -210,15 +210,11 @@ class HaSidebar extends LitElement {
       return html``;
     }
 
-    return html`
-      ${this.renderSidebarHeader()} ${this.renderItems()}
-
-      <div class="divider"></div>
-
-      ${this.renderNotifications()} ${this.renderUserItem()}
+    return html` ${this.renderSidebarHeader()} ${this.renderItems()}
+      ${this.renderDivider()} ${this.renderNotifications()}
+      ${this.renderUserItem()}
       <div disabled class="bottom-spacer"></div>
-      <div class="tooltip"></div>
-    `;
+      <div class="tooltip"></div>`;
   }
 
   protected shouldUpdate(changedProps: PropertyValues): boolean {
@@ -300,6 +296,14 @@ class HaSidebar extends LitElement {
     }
   }
 
+  private renderDivider() {
+    return html`<mwc-list-item class="divider"></mwc-list-item>`;
+  }
+
+  private renderSpacer() {
+    return html`<mwc-list-item class="spacer" disabled></mwc-list-item>`;
+  }
+
   private renderSidebarHeader() {
     const hass = this.hass;
 
@@ -333,7 +337,61 @@ class HaSidebar extends LitElement {
     </div>`;
   }
 
+  private renderEditModeItems() {
+    const hass = this.hass;
+
+    const [beforeSpacer] = computePanels(
+      hass.panels,
+      hass.defaultPanel,
+      this._panelOrder,
+      this._hiddenPanels
+    );
+
+    return html`<div id="sortable">
+        ${guard([this._hiddenPanels, this._renderEmptySortable], () =>
+          this._renderEmptySortable ? "" : this._renderPanels(beforeSpacer)
+        )}
+      </div>
+      ${this.renderSpacer()}
+      ${this._hiddenPanels.length
+        ? this._hiddenPanels.map((url) => {
+            const panel = this.hass.panels[url];
+            if (!panel) {
+              return "";
+            }
+            return html`<mwc-list-item
+              @click=${this._unhidePanel}
+              class="hidden-panel"
+              .panel=${url}
+              graphic="icon"
+            >
+              <ha-icon
+                slot="graphic"
+                .icon=${panel.url_path === this.hass.defaultPanel
+                  ? "mdi:view-dashboard"
+                  : panel.icon}
+              ></ha-icon>
+              <span class="item-text"
+                >${panel.url_path === this.hass.defaultPanel
+                  ? hass.localize("panel.states")
+                  : hass.localize(`panel.${panel.title}`) || panel.title}</span
+              >
+              <mwc-icon-button class="show-panel">
+                <ha-svg-icon .path=${mdiPlus}></ha-svg-icon>
+              </mwc-icon-button>
+            </mwc-list-item>`;
+          })
+        : ""}
+      ${this.renderSpacer()}`;
+  }
+
   private renderItems() {
+    return html`${this.editMode
+      ? this.renderEditModeItems()
+      : this.renderNormalItems()}`;
+  }
+
+  private renderNormalItems() {
     const hass = this.hass;
 
     const [beforeSpacer, afterSpacer] = computePanels(
@@ -353,76 +411,35 @@ class HaSidebar extends LitElement {
         @scroll=${this._listboxScroll}
         @keydown=${this._listboxKeydown}
       >
-        ${this.editMode
-          ? html`<div id="sortable">
-              ${guard([this._hiddenPanels, this._renderEmptySortable], () =>
-                this._renderEmptySortable
-                  ? ""
-                  : this._renderPanels(beforeSpacer)
-              )}
-            </div>`
-          : this._renderPanels(beforeSpacer)}
-        <div class="spacer" disabled></div>
-        ${this.editMode && this._hiddenPanels.length
-          ? html`
-              ${this._hiddenPanels.map((url) => {
-                const panel = this.hass.panels[url];
-                if (!panel) {
-                  return "";
-                }
-                return html`<mwc-list-item
-                  @click=${this._unhidePanel}
-                  class="hidden-panel"
-                  .panel=${url}
-                  graphic="icon"
-                >
-                  <ha-icon
-                    slot="graphic"
-                    .icon=${panel.url_path === this.hass.defaultPanel
-                      ? "mdi:view-dashboard"
-                      : panel.icon}
-                  ></ha-icon>
-                  <span class="item-text"
-                    >${panel.url_path === this.hass.defaultPanel
-                      ? hass.localize("panel.states")
-                      : hass.localize(`panel.${panel.title}`) ||
-                        panel.title}</span
-                  >
-                  <mwc-icon-button class="show-panel">
-                    <ha-svg-icon .path=${mdiPlus}></ha-svg-icon>
-                  </mwc-icon-button>
-                </mwc-list-item>`;
-              })}
-              <div class="spacer" disabled></div>
-            `
-          : ""}
+        ${this._renderPanels(beforeSpacer)} ${this.renderSpacer()}
         ${this._renderPanels(afterSpacer)}
         ${this._externalConfig && this._externalConfig.hasSettingsScreen
-          ? html`
-              <a
-                aria-role="option"
-                aria-label=${hass.localize(
-                  "ui.sidebar.external_app_configuration"
-                )}
-                href="#external-app-configuration"
-                tabindex="-1"
-                @click=${this._handleExternalAppConfiguration}
-                @mouseenter=${this._itemMouseEnter}
-                @mouseleave=${this._itemMouseLeave}
-              >
-                <mwc-list-item graphic="icon">
-                  <ha-svg-icon
-                    slot="graphic"
-                    .path=${mdiCellphoneCog}
-                  ></ha-svg-icon>
-                  <span class="item-text">
-                    ${hass.localize("ui.sidebar.external_app_configuration")}
-                  </span>
-                </mwc-list-item>
-              </a>
-            `
+          ? this.renderExternalAppConfiguration()
           : ""}
       </mwc-list>
+    `;
+  }
+
+  private renderExternalAppConfiguration() {
+    const hass = this.hass;
+
+    return html`
+      <a
+        aria-role="option"
+        aria-label=${hass.localize("ui.sidebar.external_app_configuration")}
+        href="#external-app-configuration"
+        tabindex="-1"
+        @click=${this._handleExternalAppConfiguration}
+        @mouseenter=${this._itemMouseEnter}
+        @mouseleave=${this._itemMouseLeave}
+      >
+        <mwc-list-item graphic="icon">
+          <ha-svg-icon slot="graphic" .path=${mdiCellphoneCog}></ha-svg-icon>
+          <span class="item-text">
+            ${hass.localize("ui.sidebar.external_app_configuration")}
+          </span>
+        </mwc-list-item>
+      </a>
     `;
   }
 
@@ -686,7 +703,7 @@ class HaSidebar extends LitElement {
 
   private _renderPanels(panels: PanelInfo[]) {
     return panels.map((panel) =>
-      this._renderPanel(
+      this._renderPanel2(
         panel.url_path,
         panel.url_path === this.hass.defaultPanel
           ? panel.title || this.hass.localize("panel.states")
@@ -733,6 +750,43 @@ class HaSidebar extends LitElement {
             </mwc-icon-button>`
           : ""}
       </a>
+    `;
+  }
+
+  private _renderPanel2(
+    urlPath: string,
+    title: string | null,
+    icon?: string | null,
+    iconPath?: string | null
+  ) {
+    return html`
+      <mwc-list-item
+        graphic="icon"
+        .activated=${urlPath === this.hass.panelUrl}
+      >
+        <a
+          aria-role="option"
+          href=${`/${urlPath}`}
+          data-panel=${urlPath}
+          tabindex="-1"
+          @mouseenter=${this._itemMouseEnter}
+          @mouseleave=${this._itemMouseLeave}
+        >
+          ${iconPath
+            ? html`<ha-svg-icon slot="graphic" .path=${iconPath}></ha-svg-icon>`
+            : html`<ha-icon slot="graphic" .icon=${icon}></ha-icon>`}
+          <span class="item-text">${title}</span>
+          ${this.editMode
+            ? html`<mwc-icon-button
+                class="hide-panel"
+                .panel=${urlPath}
+                @click=${this._hidePanel}
+              >
+                <ha-svg-icon .path=${mdiClose}></ha-svg-icon>
+              </mwc-icon-button>`
+            : ""}
+        </a>
+      </mwc-list-item>
     `;
   }
 
@@ -837,6 +891,7 @@ class HaSidebar extends LitElement {
           position: relative;
           display: block;
           outline: 0;
+          width: 100%;
         }
 
         mwc-list-item {
@@ -911,7 +966,8 @@ class HaSidebar extends LitElement {
           max-width: calc(100% - 56px);
         }
         :host([expanded]) mwc-list-item .item-text {
-          display: block;
+          display: inline;
+          width: 100%;
         }
 
         .divider {
